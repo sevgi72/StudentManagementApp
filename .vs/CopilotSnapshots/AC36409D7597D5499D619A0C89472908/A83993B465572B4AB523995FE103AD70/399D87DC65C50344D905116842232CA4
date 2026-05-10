@@ -1,0 +1,94 @@
+﻿using StudentManagementApp.Dtos.Group;
+using StudentManagementApp.Models;
+using StudentManagementApp.Repositories.Interfaces;
+using StudentManagementApp.Services.Interfaces;
+using StudentManagementApp.Services.Validators;
+
+namespace StudentManagementApp.Services
+{
+    public class GroupService : IGroupService
+    {
+        private readonly IGroupRepository _groupRepository;
+        private readonly GroupValidator _validator;
+
+        public GroupService(
+            IGroupRepository groupRepository,
+            GroupValidator validator)
+        {
+            _groupRepository = groupRepository;
+            _validator = validator;
+        }
+
+        // GET ALL
+        public async Task<IEnumerable<GroupReturnDto>> GetAllAsync()
+        {
+            var groups = await _groupRepository.GetAllAsync();
+
+            return groups.Select(g => new GroupReturnDto
+            {
+                Id = g.Id,
+                Name = g.Name
+            });
+        }
+
+        // GET BY ID
+        public async Task<GroupReturnDto> GetByIdAsync(int id)
+        {
+            var group = await _groupRepository.GetByIdAsync(id);
+
+            if (group == null) return null;
+
+            return new GroupReturnDto
+            {
+                Id = group.Id,
+                Name = group.Name
+            };
+        }
+
+        // CREATE
+        public async Task CreateAsync(GroupCreateDto dto)
+        {
+            await _validator.ValidateCreateAsync(dto);
+
+            var group = new Group
+            {
+                Name = dto.Name
+            };
+
+            await _groupRepository.AddAsync(group);
+            await _groupRepository.SaveChangesAsync();
+        }
+
+        // UPDATE
+        public async Task<bool> UpdateAsync(int id, GroupUpdateDto dto)
+        {
+            var group = await _groupRepository.GetByIdAsync(id);
+
+            if (group == null)
+                return false;
+
+            await _validator.ValidateUpdateAsync(id, dto);
+
+            group.Name = dto.Name;
+
+            _groupRepository.Update(group);
+            await _groupRepository.SaveChangesAsync();
+
+            return true;
+        }
+
+        // DELETE
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var group = await _groupRepository.GetByIdAsync(id);
+
+            if (group == null)
+                return false;
+
+            _groupRepository.Delete(group);
+            await _groupRepository.SaveChangesAsync();
+
+            return true;
+        }
+    }
+}

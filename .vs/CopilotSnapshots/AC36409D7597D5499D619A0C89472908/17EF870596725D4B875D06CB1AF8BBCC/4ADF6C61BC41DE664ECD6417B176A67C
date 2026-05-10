@@ -1,0 +1,73 @@
+﻿namespace StudentManagementApp.Repositories.Interfaces
+{
+    using global::StudentManagementApp.Data;
+    using global::StudentManagementApp.Models;
+    using Microsoft.EntityFrameworkCore;
+
+    namespace StudentManagementApp.Repositories
+    {
+        public class GroupRepository : IGroupRepository
+        {
+            private readonly AppDbContext _context;
+
+            public GroupRepository(AppDbContext context)
+            {
+                _context = context;
+            }
+
+            // Get all groups
+            public async Task<IEnumerable<Group>> GetAllAsync()
+            {
+                return await _context.Groups
+                    .Include(g => g.Students)
+                    .ToListAsync();
+            }
+
+            // Get group by id
+            public async Task<Group?> GetByIdAsync(int id)
+            {
+                return await _context.Groups
+                    .Include(g => g.Students)
+                    .FirstOrDefaultAsync(g => g.Id == id);
+            }
+
+            // Add new group
+            public async Task AddAsync(Group group)
+            {
+                await _context.Groups.AddAsync(group);
+            }
+
+            // Update group
+            public void Update(Group group)
+            {
+                _context.Groups.Update(group);
+            }
+
+            // Delete group
+            public void Delete(Group group)
+            {
+                _context.Groups.Remove(group);
+            }
+
+            // Check if name exists (validation üçün)
+            public async Task<bool> ExistsByNameAsync(string name)
+            {
+                return await _context.Groups
+                    .AnyAsync(g => g.Name == name);
+            }
+
+            // Check if id exists
+            public async Task<bool> ExistsByIdAsync(int id)
+            {
+                return await _context.Groups
+                    .AnyAsync(g => g.Id == id);
+            }
+
+            // Save changes
+            public async Task SaveChangesAsync()
+            {
+                await _context.SaveChangesAsync();
+            }
+        }
+    }
+}

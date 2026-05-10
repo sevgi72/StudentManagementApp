@@ -1,0 +1,67 @@
+﻿using FluentValidation;
+using Microsoft.EntityFrameworkCore;
+using StudentManagementApp.Data;
+using StudentManagementApp.Mappings;
+using StudentManagementApp.Repositories;
+using StudentManagementApp.Repositories.Interfaces;
+using StudentManagementApp.Services;
+using StudentManagementApp.Services.Interfaces;
+using StudentManagementApp.Services.Validators;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// DbContext
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+
+// Register repositories
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+
+// Register services
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IGroupService, GroupService>();
+
+// Register validators
+builder.Services.AddScoped<StudentValidator>();
+builder.Services.AddScoped<GroupValidator>();
+
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Controllers
+builder.Services.AddControllers();
+
+// Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+//// AutoMapper
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MapperProfile>());
+
+var app = builder.Build();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// Enable CORS
+app.UseCors("AllowAll");
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();

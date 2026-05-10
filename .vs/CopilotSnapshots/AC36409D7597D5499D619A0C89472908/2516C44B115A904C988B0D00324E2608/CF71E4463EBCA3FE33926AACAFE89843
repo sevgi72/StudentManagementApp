@@ -1,0 +1,12 @@
+﻿
+
+namespace StudentManagementApp.Profile
+{
+    public class MapperProfile : Profile
+    {
+        public MapperProfile()
+        {
+            
+        }
+    }
+}

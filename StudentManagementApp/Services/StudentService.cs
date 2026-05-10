@@ -1,0 +1,112 @@
+﻿using System.Linq;
+using AutoMapper;
+using FluentValidation;
+using StudentManagementApp.Dtos.Student;
+using StudentManagementApp.Models;
+using StudentManagementApp.Repositories.Interfaces;
+using StudentManagementApp.Services.Interfaces;
+using StudentManagementApp.Services.Validators;
+
+namespace StudentManagementApp.Services
+{
+    public class StudentService : IStudentService
+    {
+        private readonly IStudentRepository _studentRepository;
+        private readonly IGroupRepository _groupRepository;
+        private readonly IValidator<StudentCreateDto> _createValidator;
+        private readonly IValidator<StudentUpdateDto> _updateValidator;
+        private readonly IMapper _mapper;
+
+        public StudentService(
+            IStudentRepository studentRepository,
+            IGroupRepository groupRepository,
+            IValidator<StudentCreateDto> createValidator,
+            IValidator<StudentUpdateDto> updateValidator,
+            IMapper mapper)
+        {
+            _studentRepository = studentRepository;
+            _groupRepository = groupRepository;
+            _createValidator = createValidator;
+            _updateValidator = updateValidator;
+            _mapper = mapper;
+        }
+
+        // GET ALL (SEARCH + PAGINATION)
+        public async Task<IEnumerable<StudentReturnDto>> GetAllAsync(
+            int page,
+            int pageSize,
+            string? search)
+        {
+            var students = await _studentRepository.GetAllAsync();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                search = search.ToLower();
+
+                students = students.Where(x =>
+                    x.FullName.ToLower().Contains(search) ||
+                    x.Email.ToLower().Contains(search));
+            }
+
+            var paged = students
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return _mapper.Map<IEnumerable<StudentReturnDto>>(paged);
+        }
+
+        // GET BY ID
+        public async Task<StudentReturnDto?> GetByIdAsync(int id)
+        {
+            var student = await _studentRepository.GetByIdAsync(id);
+
+            if (student == null) return null;
+
+            return _mapper.Map<StudentReturnDto>(student);
+        }
+
+        // CREATE
+        public async Task CreateAsync(StudentCreateDto dto)
+        {
+            await _createValidator.ValidateAndThrowAsync(dto);
+
+            var student = _mapper.Map<Student>(dto);
+
+            await _studentRepository.AddAsync(student);
+            await _studentRepository.SaveChangesAsync();
+        }
+
+        // UPDATE
+        public async Task<bool> UpdateAsync(int id, StudentUpdateDto dto)
+        {
+            var student = await _studentRepository.GetByIdAsync(id);
+
+            if (student == null)
+                return false;
+
+            await _updateValidator.ValidateAndThrowAsync(dto);
+
+            _mapper.Map(dto, student);
+
+            _studentRepository.Update(student);
+            await _studentRepository.SaveChangesAsync();
+
+            return true;
+        }
+
+        // DELETE
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var student = await _studentRepository.GetByIdAsync(id);
+
+            if (student == null)
+                return false;
+
+            _studentRepository.Delete(student);
+            await _studentRepository.SaveChangesAsync();
+
+            return true;
+        }
+    }
+}
