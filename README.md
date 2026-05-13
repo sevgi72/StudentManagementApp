@@ -309,8 +309,4 @@ For questions, suggestions, or support:
 - [User Guide](./docs/USER_GUIDE.md)
 - [Developer Guide](./docs/DEVELOPER_GUIDE.md)
 
----
 
-**Made with ❤️ by [Your Name/Team]**
-
-*Last updated: [Current Date]*
