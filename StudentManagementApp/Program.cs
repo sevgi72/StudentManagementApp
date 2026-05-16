@@ -1,13 +1,18 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using StudentManagementApp.Data;
 using StudentManagementApp.Mappings;
+using StudentManagementApp.Models;
 using StudentManagementApp.Repositories;
 using StudentManagementApp.Repositories.Interfaces;
 using StudentManagementApp.Services;
 using StudentManagementApp.Services.Interfaces;
 using StudentManagementApp.Services.Validators;
 using StudentManagementApp.Validators.StudentValidator;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,9 +48,83 @@ builder.Services.AddControllers();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
+builder.Services.AddIdentity<AppUser, IdentityRole>(
+    opt => 
+    {
+        //burda bezi congigurationlar yazilir.
+        //Mesele passwordun minimum uzunlugu, reqem, boyuk herf,
+        //kicik herf olub olmamasi kimi.
+        opt.Password.RequiredLength = 6;
+        opt.Password.RequireDigit = true;
+        opt.Password.RequireUppercase = true;
+        opt.Password.RequireLowercase = true;
+        opt.Password.RequireNonAlphanumeric = false;
+    })
+    //hansi database e tetbiq olunur onu gosterir
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+//authentication ucun JWT Bearer token istifade edirik
+builder.Services.AddAuthentication(x=>
+{
+    //default verirki teleb elemesin
+    x.DefaultAuthenticateScheme =JwtBearerDefaults.AuthenticationScheme;
+    x.DefaultScheme =JwtBearerDefaults.AuthenticationScheme;
+    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+}
+)
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            
+            //gelen tokenden ne teleb edirikse onu bura yaziriq
+            ValidateIssuer = true,
+            //false elemek ignore ele demedkir, true elemek validate ele demekdir
+            ValidateAudience = true,
+            ValidateLifetime = true, //expire olub olmadigini yoxlayir
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+    });
 
+builder.Services.AddAuthorization();
+//add jwt to swagger
+    builder.Services.AddScoped<JwtService>();
+//migrate dataabse
+//using (var scope = builder.Services.BuildServiceProvider().CreateScope())
+//{
+//    //databaseden (instance aliriq) dbcontexti aliriq ve migrate edirik
+//    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+//    dbContext.Database.Migrate();
+//}
 builder.Services.AddValidatorsFromAssemblyContaining<StudentCreateDtoValidator>();
 
 //// AutoMapper

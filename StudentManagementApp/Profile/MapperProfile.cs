@@ -2,6 +2,7 @@
 using StudentManagementApp.Dtos.Student;
 using StudentManagementApp.Dtos.Group;
 using StudentManagementApp.Models;
+using StudentManagementApp.Dtos.User;
 
 namespace StudentManagementApp.Mappings
 {
@@ -19,6 +20,8 @@ namespace StudentManagementApp.Mappings
             CreateMap<GroupCreateDto, Group>();
             CreateMap<GroupUpdateDto, Group>();
             CreateMap<Group, GroupReturnDto>();
+
+            CreateMap<RegisterDto,AppUser>();
         }
     }
 }

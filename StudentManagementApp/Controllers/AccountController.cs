@@ -1,0 +1,110 @@
+﻿using AutoMapper;
+using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using StudentManagementApp.Dtos.User;
+using StudentManagementApp.Models;
+using StudentManagementApp.Services;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+
+namespace StudentManagementApp.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AccountController(
+        IValidator<RegisterDto> validator,
+        UserManager<AppUser> userManager,
+        RoleManager<IdentityRole> roleManager,
+        IMapper mapper,
+        IConfiguration config,
+        JwtService jwtService
+        ) : ControllerBase
+    {
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
+        {
+            var validationResult = validator.Validate(registerDto);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(validationResult.Errors);
+            }
+            var user = await userManager.FindByNameAsync(registerDto.UserName);
+            //user varsa problemdir ona gore bad request qytaririq
+            if (user is not null)
+            {
+                return BadRequest("Username already exists.");
+            }
+            //user yoxdira yeni user yaradiriq
+            user = mapper.Map<AppUser>(registerDto);
+            //passwordu yazmadiq ayrica ona gore user managerin create metodunu istifade edirik
+            //create metodu useri yaradacaq ve passwordu hashleyerek saxlayacaq
+            var result = await userManager.CreateAsync(user, registerDto.Password);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+            //todo: default role assign
+            //todolara view tasklistden baxa bilirik
+            //bizde bir default role olacaq ve yeni user yaradildiqda ona bu role assign edilecek
+            userManager.AddToRoleAsync(user, "Member");
+            return Ok("User registered successfully.");
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+        {
+            var user=await userManager.FindByNameAsync(loginDto.Username);
+            if (user is null)
+                return BadRequest("invalid username or password");
+            //arxadaki haslanmis passwordu yoxlamaq ucun user managerin checkpassword metodunu istifade edirik
+            var result =await userManager.CheckPasswordAsync(user,loginDto.Password);
+            if(!result)
+                return BadRequest("invalid username or password");
+            //generate token
+            //tokenle bagli kod 2 hisseden ibaretdir:
+            //1. token generate etmek ucun bir service yaradiriq ve bu service tokeni generate edecek
+            //2.tokenin validasiya edilmesi ucun bir middleware yaradiriq ve bu middleware tokeni yoxlayacaq
+            var roles=await userManager.GetRolesAsync(user);
+            
+            return Ok(new
+            {
+                token=jwtService.GenerateToken(user,roles,config)
+            });
+        }
+        [HttpGet]
+        [Authorize]
+        public IActionResult Profile()
+        {
+            //useauthenticate middlewaresi ile userin icindeki melumatlar doldurulur
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var username = User.Identity?.Name;
+            var fullname = User.FindFirstValue("Fullname");
+            var roles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToList();
+            return Ok(new
+            {
+                userId,
+                username,
+                fullname,
+                roles
+            });
+        }
+
+
+
+
+
+        //[HttpGet]
+        //public async Task<IActionResult> CreateRole()
+        //{
+        //    await roleManager.CreateAsync(new IdentityRole("Member"));
+        //    await roleManager.CreateAsync(new IdentityRole("Admin"));
+
+        //    return Ok();
+        //}
+    }
+}
