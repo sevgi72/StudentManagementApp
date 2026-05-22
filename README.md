@@ -298,7 +298,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For questions, suggestions, or support:
 
-- **Email:** [your-email@example.com]
+- **Email:** [sevgimf@code.edu.az]
 - **GitHub Issues:** [Report a bug](https://github.com/sevgi72/StudentManagementApp/issues)
 - **GitHub Discussions:** [Ask a question](https://github.com/sevgi72/StudentManagementApp/discussions)
 
